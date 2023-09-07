@@ -60,7 +60,7 @@ const signUp = async (req, res) => {
       `INSERT INTO users (name, email,profile_image, password) VALUES ('${name}', '${email}', '${profileImage}', '${encryptedPw}')`
     );
 
-    return res.status(201).json({ message: "userCreated" });
+    return res.status(201).json({ message: "USER_CREATED" });
   } catch (error) {
     console.log(error);
     return res.status(error.status).json({ message: error.message });
@@ -68,6 +68,43 @@ const signUp = async (req, res) => {
 };
 
 app.post("/sign-up", signUp);
+
+const signIn = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      const error = new Error("KEY_ERROR");
+      error.status = 400;
+      throw error;
+    }
+
+    const [existingUser] = await myDataSource.query(`SELECT password FROM users WHERE email = '${email}'`);
+    if (!existingUser) {
+      const error = new Error("ACCOUNT_DOES_NOT_EXIST");
+      error.status = 404;
+      throw error;
+    }
+
+    if (!bcrypt.compareSync(password, existingUser.password)) {
+      const error = new Error("PASSWORD_DOES_NOT_MATCH");
+      error.status = 400;
+      throw error;
+    }
+
+    const token = jwt.sign({ id: email }, process.env.SECRET_KEY);
+
+    return res.status(200).json({
+      message: "LOGIN_SUCCESS",
+      accessToken: token
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(error.status).json({ message: error.message });
+  }
+};
+
+app.post("/sign-in", signIn);
 
 const server = http.createServer(app);
 
